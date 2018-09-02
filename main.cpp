@@ -2,41 +2,33 @@
 #include <cstdlib>
 #include <mpi.h>
 #include <omp.h>
+#include <complex.h>
+
 
 // return 1 if in set, 0 otherwise
-int inset(double real, double img, int maxiter) {
+int inset(double real, double img, int max_iter) {
+    double q = (real - 0.25) * (real - 0.25) + img * img;
+    if (q * (q + (real - 0.25)) < 0.25 * img * img || (real + 1) * (real + 1) + img * img < 1 / 16) {
+        return 1;
+    }
+
     double z_real = real;
     double z_img = img;
-    for (int iters = 0; iters < maxiter; iters++) {
+    for (int iters = 0; iters < max_iter; iters++) {
         double z2_real = z_real * z_real - z_img * z_img;
         double z2_img = 2.0 * z_real * z_img;
         z_real = z2_real + real;
         z_img = z2_img + img;
-        if (z_real * z_real + z_img * z_img > 4.0) return 0;
+        if (z_real * z_real + z_img * z_img > 4.0) {
+            return 0;
+        }
     }
     return 1;
 }
 
-// count the number of points in the set, within the region
-int mandelbrotSetCount(double real_lower, double real_upper, double img_lower, double img_upper, int num, int maxiter) {
-    int count = 0;
-    double real_step = (real_upper - real_lower) / num;
-    double img_step = (img_upper - img_lower) / num;
-
-
-#pragma omp parallel for schedule (dynamic)
-
-    for (int real = 0; real < num; real++) {
-        for (int img = 0; img < num; img++) {
-            count += inset(real_lower + real * real_step, img_lower + img * img_step, maxiter);
-        }
-    }
-    return count;
-}
-
 // main
 int main(int argc, char *argv[]) {
-    double timeBegin, timeEnd;
+    double time_begin, time_end;
 
     double real_lower;
     double real_upper;
@@ -46,7 +38,14 @@ int main(int argc, char *argv[]) {
     int maxiter;
     int num_regions = (argc - 1) / 6;
 
-    timeBegin = omp_get_wtime();
+    time_begin = omp_get_wtime();
+
+
+    MPI_Init(&argc, &argv);
+
+    int size, rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     for (int region = 0; region < num_regions; region++) {
         // scan the arguments
@@ -56,11 +55,49 @@ int main(int argc, char *argv[]) {
         sscanf(argv[region * 6 + 4], "%lf", &img_upper);
         sscanf(argv[region * 6 + 5], "%i", &num);
         sscanf(argv[region * 6 + 6], "%i", &maxiter);
-        printf("%d\n", mandelbrotSetCount(real_lower, real_upper, img_lower, img_upper, num, maxiter));
+
+        int count = 0;
+        double real_step = (real_upper - real_lower) / num;
+        double img_step = (img_upper - img_lower) / num;
+
+
+        int new_num = ((real_upper - real_lower) / size) / real_step;
+
+        if (rank != size - 1) {
+#pragma omp parallel
+            {
+#pragma omp for reduction(+:count) schedule(dynamic)
+                for (int real = rank * new_num; real < (rank + 1) * new_num; real++) {
+                    for (int img = 0; img < num; img++) {
+                        count += inset(real_lower + real * real_step, img_lower + img * img_step, maxiter);
+                    }
+                }
+            }
+        } else {
+#pragma omp parallel
+            {
+#pragma omp for reduction(+:count) schedule(dynamic)
+                for (int real = rank * new_num; real < num; real++) {
+                    for (int img = 0; img < num; img++) {
+                        count += inset(real_lower + real * real_step, img_lower + img * img_step, maxiter);
+                    }
+                }
+            }
+        }
+
+        int global_sum = 0;
+        MPI_Reduce(&count, &global_sum, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+        if (rank == 0) {
+            printf("%d\n", global_sum);
+        }
     }
 
-    timeEnd = omp_get_wtime();
-    printf("%.16g\n", (timeEnd - timeBegin));
+    MPI_Finalize();
+    if (rank == 0) {
+        time_end = omp_get_wtime();
+        printf("%.16g\n", (time_end - time_begin));
+    }
 
     return EXIT_SUCCESS;
 }

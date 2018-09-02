@@ -1,6 +1,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <omp.h>
 
 
 // return 1 if in set, 0 otherwise
@@ -32,6 +33,7 @@ int mandelbrotSetCount(double real_lower, double real_upper, double img_lower, d
 
 // main
 int main(int argc, char *argv[]) {
+    double time_begin, time_end;
     double real_lower;
     double real_upper;
     double img_lower;
@@ -39,6 +41,9 @@ int main(int argc, char *argv[]) {
     int num;
     int maxiter;
     int num_regions = (argc - 1) / 6;
+
+    time_begin = omp_get_wtime();
+
     for (int region = 0; region < num_regions; region++) {
         // scan the arguments
         sscanf(argv[region * 6 + 1], "%lf", &real_lower);
@@ -49,5 +54,9 @@ int main(int argc, char *argv[]) {
         sscanf(argv[region * 6 + 6], "%i", &maxiter);
         printf("%d\n", mandelbrotSetCount(real_lower, real_upper, img_lower, img_upper, num, maxiter));
     }
+
+    time_end = omp_get_wtime();
+    printf("%.16g\n", (time_end - time_begin));
+
     return EXIT_SUCCESS;
 }

@@ -11,7 +11,6 @@ int inset(double real, double img, int max_iter) {
     if (q * (q + (real - 0.25)) < 0.25 * img * img || (real + 1) * (real + 1) + img * img < 0.25 * 0.25) {
         return 1;
     }
-
     double z_real = real;
     double z_img = img;
     for (int iters = 0; iters < max_iter; iters++) {

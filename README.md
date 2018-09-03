@@ -1,10 +1,10 @@
 Compile:
 ```$xslt
-mpif90 -fopenmp -o main main.cpp
+mpif90 -fopenmp -o mandelbrot main.cpp
 ```
 
 Run:
 ```$xslt
-mpirun -np 2 ./main -2.0 1.0 -1.0 1.0 100 10000
+mpirun -np 2 ./mandelbrot -2.0 1.0 -1.0 1.0 100 10000
 ```
 (-np 2 can be replaced by another number of processors)

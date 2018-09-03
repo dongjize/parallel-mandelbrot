@@ -8,7 +8,7 @@
 // return 1 if in set, 0 otherwise
 int inset(double real, double img, int max_iter) {
     double q = (real - 0.25) * (real - 0.25) + img * img;
-    if (q * (q + (real - 0.25)) < 0.25 * img * img || (real + 1) * (real + 1) + img * img < 1 / 16) {
+    if (q * (q + (real - 0.25)) < 0.25 * img * img || (real + 1) * (real + 1) + img * img < 0.25 * 0.25) {
         return 1;
     }
 
@@ -60,13 +60,12 @@ int main(int argc, char *argv[]) {
         double real_step = (real_upper - real_lower) / num;
         double img_step = (img_upper - img_lower) / num;
 
-
         int new_num = ((real_upper - real_lower) / size) / real_step;
 
         if (rank != size - 1) {
 #pragma omp parallel
             {
-#pragma omp for reduction(+:count) schedule(dynamic)
+#pragma omp for reduction(+:count) schedule(dynamic) nowait
                 for (int real = rank * new_num; real < (rank + 1) * new_num; real++) {
                     for (int img = 0; img < num; img++) {
                         count += inset(real_lower + real * real_step, img_lower + img * img_step, maxiter);
@@ -76,7 +75,7 @@ int main(int argc, char *argv[]) {
         } else {
 #pragma omp parallel
             {
-#pragma omp for reduction(+:count) schedule(dynamic)
+#pragma omp for reduction(+:count) schedule(dynamic) nowait
                 for (int real = rank * new_num; real < num; real++) {
                     for (int img = 0; img < num; img++) {
                         count += inset(real_lower + real * real_step, img_lower + img * img_step, maxiter);

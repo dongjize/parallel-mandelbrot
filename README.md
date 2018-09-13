@@ -1,19 +1,5 @@
-# parallel-computing
-
-## Assignment 1b
-
-
-
-Compile:
-```$xslt
 mpicc -fopenmp -o mandelbrot main.cpp
-```
-
-Run:
-```$xslt
-mpirun -np 2 ./mandelbrot -2.0 1.0 -1.0 1.0 100 10000
-```
-(-np 2 can be replaced by another number of processors, or can be ignored)
+mpirun ./mandelbrot -2.0 1.0 -1.0 1.0 100 10000
 
 ## Example of Slurm (4 nodes * 8 cores)
 ```
